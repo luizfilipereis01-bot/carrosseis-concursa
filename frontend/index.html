@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Criador de Carrosséis — Concursa AI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    * { font-family: 'Inter', sans-serif; }
+
+    .gradient-text {
+      background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .card-glow {
+      box-shadow: 0 0 0 1px rgba(99,102,241,0.2), 0 4px 24px rgba(99,102,241,0.08);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-primary:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary:active:not(:disabled) { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .slide-card {
+      border-left: 3px solid #6366f1;
+    }
+    .slide-card.cover { border-color: #ec4899; }
+    .slide-card.brand { border-color: #a855f7; }
+    .slide-card.cta   { border-color: #10b981; }
+
+    textarea:focus, input:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(99,102,241,0.5);
+    }
+
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .badge {
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    details > summary { cursor: pointer; user-select: none; }
+    details > summary::-webkit-details-marker { display: none; }
+
+    .copy-btn {
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .slide-card:hover .copy-btn { opacity: 1; }
+  </style>
+</head>
+
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+
+  <!-- ── Header ── -->
+  <header class="border-b border-gray-800 bg-gray-950/80 backdrop-blur sticky top-0 z-10">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
+      <span class="text-2xl">🎠</span>
+      <div>
+        <h1 class="font-bold text-base leading-tight gradient-text">Criador de Carrosséis</h1>
+        <p class="text-xs text-gray-500">Concursa AI — Social Media</p>
+      </div>
+      <div id="auth-status" class="ml-auto"></div>
+    </div>
+  </header>
+
+  <!-- ── Main ── -->
+  <main class="max-w-3xl mx-auto px-4 py-8 space-y-6">
+
+    <!-- Form card -->
+    <section class="bg-gray-900 rounded-2xl p-6 card-glow space-y-5">
+
+      <!-- Command -->
+      <div class="space-y-2">
+        <label class="block text-sm font-semibold text-gray-300">
+          Comando
+          <span class="ml-1 text-gray-500 font-normal">(o que você quer que o carrossel aborde)</span>
+        </label>
+        <textarea
+          id="command"
+          rows="3"
+          placeholder="Ex: carrossel sobre concurso da Receita Federal 2025&#10;Ex: varredura&#10;Ex: refaz mais viral"
+          class="w-full bg-gray-800 text-gray-100 placeholder-gray-600 rounded-xl px-4 py-3 text-sm resize-none border border-gray-700 focus:border-indigo-500 transition"
+        ></textarea>
+      </div>
+
+      <!-- Canva link -->
+      <div class="space-y-2">
+        <label class="block text-sm font-semibold text-gray-300">
+          Link do Canva
+          <span class="ml-1 text-gray-500 font-normal">(link de edição do design template)</span>
+        </label>
+        <input
+          id="canva-link"
+          type="url"
+          placeholder="https://www.canva.com/design/DAF.../edit"
+          class="w-full bg-gray-800 text-gray-100 placeholder-gray-600 rounded-xl px-4 py-3 text-sm border border-gray-700 focus:border-indigo-500 transition"
+        />
+      </div>
+
+      <!-- Button -->
+      <button
+        id="generate-btn"
+        onclick="generate()"
+        class="btn-primary w-full py-3 rounded-xl font-semibold text-white flex items-center justify-center gap-2"
+      >
+        <span id="btn-icon">✨</span>
+        <span id="btn-label">Gerar Carrossel</span>
+      </button>
+    </section>
+
+    <!-- Error -->
+    <div id="error-box" class="hidden bg-red-900/40 border border-red-700 rounded-2xl px-5 py-4 text-sm text-red-300"></div>
+
+    <!-- Results -->
+    <section id="results" class="hidden space-y-5">
+
+      <!-- Link result -->
+      <div class="bg-gray-900 rounded-2xl p-5 card-glow space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="font-semibold text-sm text-gray-300">Design editado</h2>
+          <span id="canva-badge" class="badge bg-green-900 text-green-300">✓ aplicado</span>
+        </div>
+        <a
+          id="edit-link"
+          href="#"
+          target="_blank"
+          rel="noopener"
+          class="flex items-center gap-2 bg-gray-800 hover:bg-gray-750 border border-gray-700 hover:border-indigo-500 rounded-xl px-4 py-3 transition group"
+        >
+          <span class="text-lg">🎨</span>
+          <span id="edit-link-text" class="text-indigo-400 group-hover:text-indigo-300 text-sm truncate flex-1"></span>
+          <span class="text-gray-600 text-xs">Abrir →</span>
+        </a>
+        <p id="canva-warning" class="hidden text-xs text-yellow-400 bg-yellow-900/30 border border-yellow-800 rounded-lg px-3 py-2">
+          ⚠️ O conteúdo foi gerado mas não foi aplicado automaticamente ao Canva
+          (verifique as credenciais na configuração). Use o roteiro abaixo para preencher manualmente.
+        </p>
+      </div>
+
+      <!-- Meta -->
+      <div class="bg-gray-900 rounded-2xl p-5 card-glow grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div>
+          <p class="text-xs text-gray-500 mb-1">Slides</p>
+          <p id="meta-slides" class="font-bold text-lg gradient-text">—</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 mb-1">Plataforma</p>
+          <p id="meta-platform" class="font-semibold text-sm text-gray-200">—</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 mb-1">Melhor horário</p>
+          <p id="meta-time" class="font-semibold text-sm text-gray-200">—</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 mb-1">Tema</p>
+          <p id="meta-theme" class="font-semibold text-sm text-gray-200 truncate">—</p>
+        </div>
+      </div>
+
+      <!-- Slides -->
+      <div class="bg-gray-900 rounded-2xl p-5 card-glow space-y-3">
+        <h2 class="font-semibold text-sm text-gray-300">Roteiro dos slides</h2>
+        <div id="slides-container" class="space-y-2"></div>
+      </div>
+
+      <!-- Caption -->
+      <div id="caption-section" class="hidden bg-gray-900 rounded-2xl p-5 card-glow space-y-2">
+        <div class="flex items-center justify-between">
+          <h2 class="font-semibold text-sm text-gray-300">Legenda sugerida</h2>
+          <button onclick="copyText('caption-text')" class="text-xs text-indigo-400 hover:text-indigo-300">Copiar</button>
+        </div>
+        <p id="caption-text" class="text-sm text-gray-300 whitespace-pre-line leading-relaxed"></p>
+      </div>
+
+      <!-- Hashtags -->
+      <div id="hashtags-section" class="hidden bg-gray-900 rounded-2xl p-5 card-glow space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="font-semibold text-sm text-gray-300">Hashtags</h2>
+          <button onclick="copyText('hashtags-text')" class="text-xs text-indigo-400 hover:text-indigo-300">Copiar todas</button>
+        </div>
+        <p id="hashtags-text" class="text-sm text-indigo-400 leading-relaxed"></p>
+      </div>
+
+      <!-- Raw output (collapsible) -->
+      <details class="bg-gray-900 rounded-2xl card-glow overflow-hidden">
+        <summary class="px-5 py-4 text-sm font-semibold text-gray-400 hover:text-gray-200 flex items-center gap-2 transition">
+          <span>📄</span> Ver roteiro completo (texto bruto)
+          <span class="ml-auto text-gray-600 text-xs">▼</span>
+        </summary>
+        <div class="px-5 pb-5">
+          <pre id="raw-content" class="text-xs text-gray-400 whitespace-pre-wrap leading-relaxed overflow-x-auto max-h-96 overflow-y-auto"></pre>
+        </div>
+      </details>
+
+    </section>
+  </main>
+
+  <script>
+    const SLIDE_TYPE_LABELS = {
+      cover:   { label: 'Capa',        color: 'bg-pink-900 text-pink-300' },
+      brand:   { label: 'Concursa AI', color: 'bg-purple-900 text-purple-300' },
+      cta:     { label: 'CTA',         color: 'bg-emerald-900 text-emerald-300' },
+      content: { label: 'Conteúdo',    color: 'bg-indigo-900 text-indigo-300' },
+    };
+
+    async function generate() {
+      const command = document.getElementById('command').value.trim();
+      const canvaLink = document.getElementById('canva-link').value.trim();
+      const btn = document.getElementById('generate-btn');
+      const errorBox = document.getElementById('error-box');
+
+      errorBox.classList.add('hidden');
+      errorBox.textContent = '';
+
+      if (!command) { showError('Preencha o comando.'); return; }
+      if (!canvaLink) { showError('Cole o link do Canva.'); return; }
+
+      setLoading(true);
+
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command, canva_link: canvaLink }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.detail || 'Erro desconhecido.');
+        }
+
+        renderResults(data);
+      } catch (err) {
+        showError(err.message || 'Falha na requisição. Tente novamente.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function renderResults(data) {
+      // Link
+      const link = data.edit_url;
+      document.getElementById('edit-link').href = link;
+      document.getElementById('edit-link-text').textContent = link;
+
+      // Badge / warning
+      const badge = document.getElementById('canva-badge');
+      const warning = document.getElementById('canva-warning');
+      if (data.canva_applied) {
+        badge.textContent = '✓ aplicado';
+        badge.className = 'badge bg-green-900 text-green-300';
+        warning.classList.add('hidden');
+      } else {
+        badge.textContent = '! manual';
+        badge.className = 'badge bg-yellow-900 text-yellow-300';
+        warning.classList.remove('hidden');
+      }
+
+      // Meta
+      document.getElementById('meta-slides').textContent = data.slides_count ?? '—';
+      document.getElementById('meta-platform').textContent = data.platform || '—';
+      document.getElementById('meta-time').textContent = data.post_time || '—';
+      document.getElementById('meta-theme').textContent = data.theme || '—';
+      document.getElementById('meta-theme').title = data.theme || '';
+
+      // Slides
+      const container = document.getElementById('slides-container');
+      container.innerHTML = '';
+      (data.slides || []).forEach(slide => {
+        const info = SLIDE_TYPE_LABELS[slide.type] || SLIDE_TYPE_LABELS.content;
+        const el = document.createElement('div');
+        el.className = `slide-card ${slide.type} bg-gray-800 rounded-xl px-4 py-3 relative group`;
+        el.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-xs font-bold text-gray-500">${slide.number}</span>
+                <span class="badge ${info.color}">${info.label}</span>
+              </div>
+              <p class="text-sm font-semibold text-gray-100 leading-snug">${escHtml(slide.headline)}</p>
+              ${slide.body ? `<p class="text-xs text-gray-400 mt-1 leading-relaxed whitespace-pre-line">${escHtml(slide.body)}</p>` : ''}
+            </div>
+            <button
+              class="copy-btn text-gray-600 hover:text-indigo-400 text-xs shrink-0 mt-1"
+              onclick="copySlide(${slide.number - 1})"
+              title="Copiar slide"
+            >⎘</button>
+          </div>
+        `;
+        container.appendChild(el);
+      });
+
+      // Caption
+      if (data.caption) {
+        document.getElementById('caption-text').textContent = data.caption;
+        document.getElementById('caption-section').classList.remove('hidden');
+      }
+
+      // Hashtags
+      if (data.hashtags?.length) {
+        document.getElementById('hashtags-text').textContent = data.hashtags.join(' ');
+        document.getElementById('hashtags-section').classList.remove('hidden');
+      }
+
+      // Raw
+      document.getElementById('raw-content').textContent = data.raw || '';
+
+      // Show results
+      document.getElementById('results').classList.remove('hidden');
+      document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ── Helpers ──
+
+    let _slides = [];
+
+    function copySlide(idx) {
+      const slide = (window._lastSlides || [])[idx];
+      if (!slide) return;
+      const text = [slide.headline, slide.body].filter(Boolean).join('\n');
+      navigator.clipboard.writeText(text).then(() => alert('Slide copiado!'));
+    }
+
+    function copyText(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      navigator.clipboard.writeText(el.textContent).then(() => alert('Copiado!'));
+    }
+
+    function showError(msg) {
+      const box = document.getElementById('error-box');
+      box.textContent = '⚠️ ' + msg;
+      box.classList.remove('hidden');
+    }
+
+    function setLoading(loading) {
+      const btn = document.getElementById('generate-btn');
+      const icon = document.getElementById('btn-icon');
+      const label = document.getElementById('btn-label');
+      btn.disabled = loading;
+      if (loading) {
+        icon.innerHTML = '<span class="spinner"></span>';
+        label.textContent = 'Gerando...';
+      } else {
+        icon.textContent = '✨';
+        label.textContent = 'Gerar Carrossel';
+      }
+    }
+
+    function escHtml(str) {
+      return (str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // Store slides for copy
+    const _origRender = renderResults;
+    window.renderResults = function(data) {
+      window._lastSlides = data.slides || [];
+      _origRender(data);
+    };
+
+    // ── Canva auth status ──
+
+    async function checkAuthStatus() {
+      try {
+        const res = await fetch('/auth/status');
+        const data = await res.json();
+        const el = document.getElementById('auth-status');
+
+        if (data.connected) {
+          el.innerHTML = `
+            <span class="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-900/30 border border-emerald-800 rounded-full px-3 py-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
+              Canva conectado
+            </span>`;
+        } else if (data.expired && data.has_refresh_token) {
+          // Auto-refresh silently
+          await fetch('/auth/refresh');
+          checkAuthStatus();
+        } else {
+          el.innerHTML = `
+            <a href="/auth/login" class="flex items-center gap-1.5 text-xs text-yellow-400 bg-yellow-900/30 border border-yellow-800 rounded-full px-3 py-1 hover:bg-yellow-900/50 transition">
+              <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 inline-block"></span>
+              Conectar Canva
+            </a>`;
+        }
+      } catch (_) {}
+    }
+
+    // Submit on Ctrl+Enter in textarea
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('command').addEventListener('keydown', e => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) generate();
+      });
+      checkAuthStatus();
+    });
+  </script>
+</body>
+</html>
